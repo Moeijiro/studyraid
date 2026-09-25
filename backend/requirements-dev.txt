@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27
+ruff>=0.6
+# PostgreSQL driver: only needed to run against Postgres (CI runs the suite on both).
+asyncpg>=0.29

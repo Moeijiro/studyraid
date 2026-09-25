@@ -1,0 +1,41 @@
+# The whole stack on PostgreSQL: docker compose up --build, then http://localhost:3000
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: studyraid
+      POSTGRES_PASSWORD: studyraid
+      POSTGRES_DB: studyraid
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studyraid"]
+      interval: 2s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://studyraid:studyraid@db:5432/studyraid
+      # Demo defaults. For a real deployment set ENVIRONMENT=production, a random
+      # SECRET_KEY, COOKIE_SECURE=true and DEMO_MODE=false (the app refuses to start otherwise).
+      SECRET_KEY: compose-demo-secret-change-me-compose-demo-secret
+      ALLOWED_ORIGINS: '["http://localhost:3000"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"  # the browser's WebSocket connects here directly
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        API_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
