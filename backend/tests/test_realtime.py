@@ -2,12 +2,14 @@
 
 import asyncio
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from app.api.deps import get_now
 from app.core.rate_limit import ALL_LIMITERS
 from app.db import session as db
 from app.db.base import Base
@@ -29,8 +31,13 @@ def tc(tmp_path: Path) -> Iterator[TestClient]:
     asyncio.run(_create_schema())
     for limiter in ALL_LIMITERS:
         limiter.reset()
-    with TestClient(app) as client:
-        yield client
+    # A fixed midday clock: with the real one, a run at 05:00-07:00 UTC also unlocks Early Bird.
+    app.dependency_overrides[get_now] = lambda: datetime(2026, 3, 11, 12, 0, tzinfo=UTC)
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        app.dependency_overrides.pop(get_now, None)
 
 
 def _login(tc: TestClient, username: str) -> dict[str, str]:
